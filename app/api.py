@@ -6,6 +6,8 @@ from app.config import DATA
 from app.ingest import SUPPORTED, ingest_file, list_documents, delete_document
 from app.service import Service
 
+import app.db as db
+
 app = FastAPI(title="基于文档的问答助手")
 MAX_BYTES = 10 * 1024 * 1024
 UPLOADS = DATA / "uploads"
@@ -14,7 +16,7 @@ service = Service()
 
 
 class ChatRequest(BaseModel):
-    # session_id: str = Field(min_length=1, max_length=100)
+    session_id: str = Field(min_length=1, max_length=100)
     question: str = Field(min_length=1, max_length=2000)
 
 
@@ -69,6 +71,11 @@ def get_documents():
     return documents
 
 
+@app.get("/messages")
+def get_messages(session_id: str):
+    return db.get_messages(session_id)
+
+
 @app.delete("/documents/{doc_id}")
 def remove_document(doc_id: str):
     if len(doc_id) != 64 or any(c not in "0123456789abcdef" for c in doc_id):
@@ -79,10 +86,17 @@ def remove_document(doc_id: str):
 
 @app.post("/chat")
 def chat(body: ChatRequest):
-    if not body.question.strip():
+    session_id = body.session_id.strip()
+    question = body.question.strip()
+
+    if not question:
         raise HTTPException(400, "问题不能为空白")
     try:
-        response = service.chat(body.question.strip())
+        response = service.chat(session_id, question)
+
+        db.add_message(session_id, "human", question)
+        db.add_message(session_id, "ai", response)
+
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     if response == "error":

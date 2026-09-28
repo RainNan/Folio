@@ -28,7 +28,7 @@ export function ChatInput({ value, onChange, onSend, pending }: Props) {
         <textarea
           ref={ref}
           aria-label="输入你的问题"
-          placeholder="向你的文档提问，发现新的见解…"
+          placeholder="这份文档里，有什么值得了解？"
           value={value}
           rows={1}
           onChange={(event) => onChange(event.target.value)}

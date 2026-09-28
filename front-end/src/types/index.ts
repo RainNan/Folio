@@ -14,7 +14,14 @@ export interface DeleteDocumentResponse {
   status: "deleted";
 }
 export interface ChatRequest {
+  session_id: string;
   question: string;
+}
+export interface SessionInfo {
+  session_id: string;
+  title: string;
+  created_at?: string | number;
+  updated_at?: string | number;
 }
 // FastAPI returns a JSON string, not an { answer } object.
 export type ChatResponse = string;

@@ -1,6 +1,6 @@
 from langchain_core.messages import HumanMessage, AIMessage
 
-from app.rag_chain import rag_chain
+from app.rag_chain import rag_chain, title_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from app.ingest import get_store
 
@@ -26,6 +26,12 @@ class Service:
         })
 
         return response
+
+    def update_session_title(self, session_id: str, question: str) -> None:
+        """根据首轮问题生成标题。"""
+        title = title_chain.invoke({"question": question}).strip()
+        if title:
+            db.update_title(session_id, title)
 
 
 def _format_messages_to_langchain(messages: list) -> list:

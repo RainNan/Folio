@@ -1,3 +1,5 @@
+import logging
+
 from pathlib import Path
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -8,6 +10,7 @@ from app.service import Service
 
 import app.db as db
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="基于文档的问答助手")
 MAX_BYTES = 10 * 1024 * 1024
 UPLOADS = DATA / "uploads"
@@ -89,17 +92,41 @@ def chat(body: ChatRequest):
     session_id = body.session_id.strip()
     question = body.question.strip()
 
+    if not session_id:
+        raise HTTPException(400, "会话 ID 不能为空")
     if not question:
         raise HTTPException(400, "问题不能为空白")
+    if not db.session_exists(session_id):
+        raise HTTPException(404, "会话不存在")
+
     try:
         response = service.chat(session_id, question)
 
-        db.add_message(session_id, "human", question)
-        db.add_message(session_id, "ai", response)
+        if response == "error":
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=502, content=response)
 
+        first_turn = db.add_chat_turn(session_id, question, response)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    if response == "error":
-        from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=502, content=response)
+
+    if first_turn:
+        try:
+            service.update_session_title(session_id, question)
+        except Exception:
+            logger.exception("生成会话标题失败，session_id=%s", session_id)
+
     return response
+
+
+@app.post("/sessions")
+def create_session():
+    session_id = uuid4().hex
+    title = "新对话"
+    db.add_session(session_id, title)
+    return {"session_id": session_id, "title": title}
+
+
+@app.get("/sessions")
+def get_sessions():
+    return db.get_sessions()

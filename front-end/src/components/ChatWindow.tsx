@@ -1,62 +1,99 @@
 import { useState } from "react";
-import { Info, Menu, PanelsTopLeft } from "lucide-react";
-import { useChat } from "../hooks/useChat";
+import {
+  Library,
+  Menu,
+  MessageSquare,
+  RefreshCw,
+  LoaderCircle,
+} from "lucide-react";
+import type { useChat } from "../hooks/useChat";
 import { ChatInput } from "./ChatInput";
 import { MessageList } from "./MessageList";
 import { Welcome } from "./Welcome";
 
 export function ChatWindow({
+  chat,
   documentCount,
-  connected,
   onOpenSidebar,
+  onLibrary,
 }: {
+  chat: ReturnType<typeof useChat>;
   documentCount: number;
-  connected: boolean | null;
   onOpenSidebar: () => void;
+  onLibrary: () => void;
 }) {
-  const { messages, pending, send } = useChat();
-  const [draft, setDraft] = useState("");
-  function submit(question: string = draft) {
-    if (pending || !question.trim() || question.trim().length > 2000) return;
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const key = chat.activeId || "new";
+  const draft = drafts[key] || "";
+  const setDraft = (value: string) =>
+    setDrafts((d) => ({ ...d, [key]: value }));
+  const { messages, pending, loading, error } = chat.current;
+  const disabled =
+    pending || loading || !!error || chat.creating || chat.loading;
+  function submit(question = draft, retry = false) {
+    if (disabled || !question.trim() || question.trim().length > 2000) return;
     setDraft("");
-    void send(question);
+    void chat.send(question, retry).then((sent) => {
+      if (!sent) setDrafts((d) => ({ ...d, [key]: question }));
+    });
   }
   return (
     <main className="chat-window">
       <header className="chat-header">
+        <button
+          className="icon-button mobile-only"
+          aria-label="打开会话栏"
+          onClick={onOpenSidebar}
+        >
+          <Menu size={21} />
+        </button>
         <div className="chat-title">
-          <button
-            className="icon-button mobile-only"
-            aria-label="打开资料库"
-            onClick={onOpenSidebar}
-          >
-            <Menu size={21} />
-          </button>
-          <PanelsTopLeft size={18} className="desktop-only" />
+          <MessageSquare size={18} />
           <div>
-            <h2>与文档对话</h2>
-            <p>每一个问题，都有迹可循</p>
+            <h2>{chat.activeSession?.title || "新对话"}</h2>
+            <p>
+              {chat.activeId
+                ? "独立会话 · 历史自动保存"
+                : "开始一次与文档的对话"}
+            </p>
           </div>
         </div>
-        <span
-          className={`connection-badge ${connected === false ? "offline" : ""}`}
-        >
-          <span />
-          {connected === null
-            ? "正在连接"
-            : connected
-              ? `${documentCount} 份文档可供检索`
-              : "服务未连接"}
-        </span>
+        <button className="library-toggle" onClick={onLibrary}>
+          <Library size={17} />
+          <span>资料库</span>
+          <b>{documentCount}</b>
+        </button>
       </header>
       <div className="chat-scroll">
-        {messages.length ? (
-          <MessageList messages={messages} pending={pending} onRetry={submit} />
+        {loading ? (
+          <div className="conversation-state" role="status">
+            <LoaderCircle className="spin" size={24} />
+            <p>正在读取这个会话…</p>
+          </div>
+        ) : error ? (
+          <div className="conversation-state" role="alert">
+            <p>{error}</p>
+            <button
+              className="secondary-button"
+              onClick={() => chat.activeId && void chat.load(chat.activeId)}
+            >
+              <RefreshCw size={16} />
+              重新加载历史
+            </button>
+          </div>
+        ) : messages.length ? (
+          <MessageList
+            key={key}
+            messages={messages}
+            pending={pending}
+            onRetry={(q) => submit(q, true)}
+          />
         ) : (
           <Welcome
             hasDocuments={documentCount > 0}
-            onExample={(question) => {
-              setDraft(question);
+            onLibrary={onLibrary}
+            onExample={(q) => {
+              setDraft(q);
               document.querySelector<HTMLTextAreaElement>("textarea")?.focus();
             }}
           />
@@ -65,13 +102,9 @@ export function ChatWindow({
       <ChatInput
         value={draft}
         onChange={setDraft}
-        pending={pending}
+        pending={disabled}
         onSend={() => submit()}
       />
-      <div className="session-note">
-        <Info size={12} />
-        当前后端使用共享对话上下文；刷新页面仅清空本页显示。
-      </div>
     </main>
   );
 }

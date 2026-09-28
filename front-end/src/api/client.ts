@@ -63,7 +63,7 @@ export async function request<T>(
     if (error instanceof ApiError) throw error;
     if (controller.signal.aborted)
       throw new ApiError(
-        "请求超时，服务端可能仍在处理。请刷新文档列表或稍后重试。",
+        "请求超时，服务端可能仍在处理。请稍后重新加载，确认结果后再重试。",
         0,
       );
     throw new ApiError(

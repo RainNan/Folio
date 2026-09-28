@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, BookOpen, Check, Copy, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ChatMessage } from "../types";
+import type { ChatMessage, DocumentSource } from "../types";
+import { SourceList } from "./SourceList";
 
 function CopyButton({ text }: { text: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
@@ -36,10 +37,12 @@ export function MessageList({
   messages,
   pending,
   onRetry,
+  onPreview,
 }: {
   messages: ChatMessage[];
   pending: boolean;
   onRetry: (question: string) => void;
+  onPreview: (source: DocumentSource) => void;
 }) {
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -111,6 +114,7 @@ export function MessageList({
                     {message.content}
                   </ReactMarkdown>
                 </div>
+                <SourceList sources={message.sources || []} onPreview={onPreview} />
                 <CopyButton text={message.content} />
               </>
             )}

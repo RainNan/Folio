@@ -1,1 +1,6 @@
 /.env
+/.tools/
+__pycache__/
+/data/previews/
+/data/document_locks/
+/tests/

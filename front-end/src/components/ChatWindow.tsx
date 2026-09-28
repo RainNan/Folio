@@ -7,6 +7,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import type { useChat } from "../hooks/useChat";
+import type { DocumentSource } from "../types";
 import { ChatInput } from "./ChatInput";
 import { MessageList } from "./MessageList";
 import { Welcome } from "./Welcome";
@@ -16,11 +17,13 @@ export function ChatWindow({
   documentCount,
   onOpenSidebar,
   onLibrary,
+  onPreview,
 }: {
   chat: ReturnType<typeof useChat>;
   documentCount: number;
   onOpenSidebar: () => void;
   onLibrary: () => void;
+  onPreview: (source: DocumentSource) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const key = chat.activeId || "new";
@@ -87,6 +90,7 @@ export function ChatWindow({
             messages={messages}
             pending={pending}
             onRetry={(q) => submit(q, true)}
+            onPreview={onPreview}
           />
         ) : (
           <Welcome

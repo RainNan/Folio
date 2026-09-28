@@ -53,6 +53,7 @@ export function DocumentUpload({ busy, uploading, onUpload }: Props) {
       </button>
       <p>{uploading ? "文档就绪后即可开始提问" : "或将文件拖放到这里"}</p>
       <span>TXT · MD · PDF · DOCX / 最大 10 MiB</span>
+      <p className="upload-source-hint">DOCX 将转换并保存为 PDF，供核对来源页码。</p>
     </div>
   );
 }

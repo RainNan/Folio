@@ -1,4 +1,4 @@
-import { FileText, Files, LoaderCircle, Trash2 } from "lucide-react";
+import { FileText, Files, LoaderCircle, Trash2, BookOpen } from "lucide-react";
 import type { DocumentInfo } from "../types";
 
 interface Props {
@@ -6,8 +6,9 @@ interface Props {
   loading: boolean;
   busy: boolean;
   onDelete: (doc: DocumentInfo) => void;
+  onPreview: (doc: DocumentInfo) => void;
 }
-export function DocumentList({ documents, loading, busy, onDelete }: Props) {
+export function DocumentList({ documents, loading, busy, onDelete, onPreview }: Props) {
   if (loading && !documents.length)
     return (
       <div className="sidebar-empty" role="status">
@@ -47,6 +48,10 @@ export function DocumentList({ documents, loading, busy, onDelete }: Props) {
               <span className="tiny-dot" />
               已索引
             </span>
+            {doc.preview_url && <button className="preview-link" onClick={() => onPreview(doc)}
+              aria-label={`查看 ${doc.filename} 的 PDF 来源`}>
+              <BookOpen size={14} />查看 PDF 来源
+            </button>}
             <details>
               <summary>查看文档 ID</summary>
               <code className="document-id">{doc.doc_id}</code>

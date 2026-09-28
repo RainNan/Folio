@@ -12,6 +12,7 @@ import { ChatWindow } from "./components/ChatWindow";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { DocumentUpload } from "./components/DocumentUpload";
 import { DocumentList } from "./components/DocumentList";
+import { DocumentPreview } from "./components/DocumentPreview";
 import { useDocuments } from "./hooks/useDocuments";
 import { useChat } from "./hooks/useChat";
 import type { DocumentInfo } from "./types";
@@ -22,6 +23,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [toDelete, setToDelete] = useState<DocumentInfo | null>(null);
+  const [preview, setPreview] = useState<{ document: DocumentInfo; page: number } | null>(null);
   const libraryDialog = useRef<HTMLDialogElement>(null);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useEffect(() => {
@@ -68,6 +70,12 @@ export default function App() {
         documentCount={library.documents.length}
         onOpenSidebar={() => setSidebarOpen(true)}
         onLibrary={openLibrary}
+        onPreview={(source) => {
+          if (source.doc_id && source.preview_url) setPreview({
+            document: { doc_id: source.doc_id, filename: source.source, preview_url: source.preview_url },
+            page: source.page_number && source.page_number > 0 ? source.page_number : 1,
+          });
+        }}
       />
       <dialog
         ref={libraryDialog}
@@ -121,6 +129,7 @@ export default function App() {
             documents={library.documents}
             loading={library.loading}
             busy={library.uploading || library.deleting}
+            onPreview={(document) => setPreview({ document, page: 1 })}
             onDelete={(doc) => {
               library.dismissNotice();
               setToDelete(doc);
@@ -130,6 +139,8 @@ export default function App() {
         {libraryOpen && notice}
       </dialog>
       {!libraryOpen && notice}
+      {preview && <DocumentPreview key={`${preview.document.doc_id}-${preview.page}`} document={preview.document}
+        initialPage={preview.page} onClose={() => setPreview(null)} />}
       <ConfirmDialog
         document={toDelete}
         busy={library.deleting}

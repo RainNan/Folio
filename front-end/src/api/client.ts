@@ -3,6 +3,8 @@ const baseURL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
   "",
 );
 
+export const apiURL = (path: string): string => `${baseURL}${path}`;
+
 export class ApiError extends Error {
   constructor(
     message: string,

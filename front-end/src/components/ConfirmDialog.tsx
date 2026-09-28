@@ -32,7 +32,7 @@ export function ConfirmDialog({ document, busy, error, onCancel, onConfirm }: Pr
       <h2 id="delete-title">删除这份文档？</h2>
       <p id="delete-description">
         「{document?.filename}
-        」及其所有分块将从资料库移除，后续检索将不再使用这份资料。此操作无法撤销。
+        」及其所有分块将从资料库移除{document?.preview_url ? "，保存的 PDF 预览也会删除" : ""}，后续检索将不再使用这份资料。此操作无法撤销。
       </p>
       {error && <div className="library-error" role="alert">{error}</div>}
       <div className="dialog-actions">

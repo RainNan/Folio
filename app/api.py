@@ -3,9 +3,10 @@ import logging
 from pathlib import Path
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from app.config import DATA
-from app.ingest import SUPPORTED, ingest_file, list_documents, delete_document
+from app.ingest import SUPPORTED, ingest_file, list_documents, delete_document, preview_path
 from app.service import Service
 
 import app.db as db
@@ -79,6 +80,17 @@ def get_messages(session_id: str):
     return db.get_messages(session_id)
 
 
+@app.get("/documents/{doc_id}/preview")
+def get_document_preview(doc_id: str):
+    try:
+        path = preview_path(doc_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if not path.is_file():
+        raise HTTPException(404, "文档预览不存在")
+    return FileResponse(path, media_type="application/pdf")
+
+
 @app.delete("/documents/{doc_id}")
 def remove_document(doc_id: str):
     if len(doc_id) != 64 or any(c not in "0123456789abcdef" for c in doc_id):
@@ -102,13 +114,14 @@ def chat(body: ChatRequest):
     try:
         response = service.chat(session_id, question)
 
-        if response == "error":
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=502, content=response)
-
-        first_turn = db.add_chat_turn(session_id, question, response)
+        first_turn = db.add_chat_turn(
+            session_id, question, response["answer"], response["sources"],
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("回答生成或保存失败，session_id=%s", session_id)
+        raise HTTPException(502, "回答生成或保存失败，请稍后重试") from exc
 
     if first_turn:
         try:

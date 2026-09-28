@@ -16,7 +16,7 @@ class Service:
     def chat(self,
              session_id: str,
              question: str
-             ) -> str:
+             ) -> dict:
         messages = db.get_messages(session_id)
         history = _format_messages_to_langchain(messages)
 

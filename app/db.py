@@ -1,4 +1,6 @@
 import sqlite3
+from contextlib import closing
+import json
 from datetime import datetime, UTC
 
 from app.config import DATA
@@ -9,7 +11,8 @@ DB_PATH = DATA / "sqlite" / "app.db"
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute("BEGIN IMMEDIATE")
         conn.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             session_id TEXT PRIMARY KEY,
@@ -34,6 +37,9 @@ def init_db():
             FOREIGN KEY(session_id) REFERENCES sessions(session_id)
         )
         """)
+        message_columns = {row[1] for row in conn.execute("PRAGMA table_info(messages)")}
+        if "sources" not in message_columns:
+            conn.execute("ALTER TABLE messages ADD COLUMN sources TEXT NOT NULL DEFAULT '[]'")
 
 
 def add_session(
@@ -44,7 +50,7 @@ def add_session(
     新建会话
     """
     now = datetime.now(UTC).timestamp()
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.execute(
             """
             INSERT INTO sessions (session_id, title, created_at, updated_at)
@@ -58,7 +64,7 @@ def get_sessions() -> list[dict]:
     """
     获取会话列表
     """
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -78,7 +84,7 @@ def add_message(
     """
     消息添加至指定会话id
     """
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.execute(
             """
             INSERT INTO messages(
@@ -102,12 +108,12 @@ def get_messages(session_id: str) -> list:
     """
     根据会话id获取消息列表
     """
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.row_factory = sqlite3.Row
 
         rows = conn.execute(
             """
-            SELECT role, content, created_at
+            SELECT role, content, created_at, sources
             FROM messages
             WHERE session_id = ?
             ORDER BY id ASC
@@ -115,14 +121,19 @@ def get_messages(session_id: str) -> list:
             (session_id,)
         ).fetchall()
 
-        return [dict(row) for row in rows]
+        messages = []
+        for row in rows:
+            message = dict(row)
+            message["sources"] = json.loads(message["sources"])
+            messages.append(message)
+        return messages
 
 
-def add_chat_turn(session_id: str, question: str, answer: str) -> bool:
+def add_chat_turn(session_id: str, question: str, answer: str, sources: list | None = None) -> bool:
     """保存一轮问答，并返回它是否为该会话的首轮。"""
     now = datetime.now(UTC).timestamp()
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         # 同一连接、同一事务；任一步抛异常，前面的写入会回滚。
         updated = conn.execute(
             "UPDATE sessions SET updated_at = ? WHERE session_id = ?",
@@ -138,24 +149,24 @@ def add_chat_turn(session_id: str, question: str, answer: str) -> bool:
 
         conn.execute(
             """
-            INSERT INTO messages (session_id, role, content, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO messages (session_id, role, content, created_at, sources)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (session_id, "human", question, now),
+            (session_id, "human", question, now, "[]"),
         )
         conn.execute(
             """
-            INSERT INTO messages (session_id, role, content, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO messages (session_id, role, content, created_at, sources)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (session_id, "ai", answer, now),
+            (session_id, "ai", answer, now, json.dumps(sources or [], ensure_ascii=False)),
         )
 
     return first_turn
 
 
 def session_exists(session_id: str) -> bool:
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         row = conn.execute(
             "SELECT 1 FROM sessions WHERE session_id = ?",
             (session_id,),
@@ -165,7 +176,7 @@ def session_exists(session_id: str) -> bool:
 
 def update_title(session_id: str, title: str):
     """更新指定会话的标题。"""
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         updated = conn.execute(
             "UPDATE sessions SET title = ? WHERE session_id = ?",
             (title, session_id),

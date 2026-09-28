@@ -146,7 +146,7 @@ export function useChat() {
       update(id, {
         messages: [
           ...messages,
-          { id: crypto.randomUUID(), role: "assistant", content: answer },
+          { id: crypto.randomUUID(), role: "assistant", content: answer.answer, sources: answer.sources },
         ],
         pending: false,
       });

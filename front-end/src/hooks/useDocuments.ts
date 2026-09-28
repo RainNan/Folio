@@ -53,7 +53,7 @@ export function useDocuments() {
       const result = await api.uploadDocument(file);
       setNotice({
         tone: result.status === "already_exists" ? "info" : "success",
-        text: `${result.status === "already_exists" ? "该文件已在资料库中，无需重复上传" : `「${file.name}」已就绪`} · ${result.chunks} 个分块${result.warnings.length ? `。提示：${result.warnings.join("；")}` : ""}`,
+        text: `${result.status === "already_exists" ? "该文件已在资料库中，无需重复上传" : `「${file.name}」已就绪`} · ${result.chunks} 个分块${result.preview_url ? " · 可查看 PDF 来源" : ""}${result.warnings.length ? `。提示：${result.warnings.join("；")}` : ""}`,
       });
       await refresh();
     } catch (err) {

@@ -2,7 +2,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from app.rag_chain import rag_chain, title_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from app.ingest import get_store
+from app.retrieval.runtime import get_retriever
 
 import app.db as db
 
@@ -10,7 +10,8 @@ import app.db as db
 class Service:
     def __init__(self):
         self.history = []
-        self.store = get_store()
+        self.retriever = get_retriever()
+        self.store = self.retriever.store
         db.init_db()
 
     def chat(self,

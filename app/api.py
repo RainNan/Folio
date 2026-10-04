@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from app.config import DATA
-from app.ingest import SUPPORTED, ingest_file, list_documents, delete_document, preview_path
+from app.ingest import SUPPORTED, list_documents, preview_path
 from app.service import Service
 
 import app.db as db
@@ -47,7 +47,7 @@ def upload_document(file: UploadFile):
         if total == 0:
             raise HTTPException(400, "文件不能为空")
         # with service.lock:
-        return ingest_file(path, service.store, original_name=name)
+        return service.retriever.ingest_file(path, original_name=name)
     except HTTPException:
         raise
     except (ValueError, UnicodeDecodeError) as exc:
@@ -95,7 +95,7 @@ def get_document_preview(doc_id: str):
 def remove_document(doc_id: str):
     if len(doc_id) != 64 or any(c not in "0123456789abcdef" for c in doc_id):
         raise HTTPException(400, "无效的文档 ID")
-    delete_document(doc_id)
+    service.retriever.delete_document(doc_id)
     return {"doc_id": doc_id, "status": "deleted"}
 
 

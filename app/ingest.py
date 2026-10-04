@@ -192,8 +192,9 @@ def list_documents():
     ]
 
 
-def delete_document(doc_id: str):
-    store = get_store()
+def delete_document(doc_id: str, store=None):
+    if store is None:
+        store = get_store()
     with document_lock(doc_id):
         store.delete(where={"doc_id": doc_id})
         preview_path(doc_id).unlink(missing_ok=True)

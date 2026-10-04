@@ -15,9 +15,13 @@ def main() -> int:
         return 1
     os.environ["LIBREOFFICE_PATH"] = str(executable)
     print(f"LibreOffice 已就绪：{executable}", flush=True)
-    os.chdir(ROOT)
-    os.execv(sys.executable, [sys.executable, "-m", "uvicorn", "app.api:app", *sys.argv[1:]])
-    return 0
+    # subprocess quotes Windows arguments correctly, including interpreter
+    # paths containing spaces. os.execv does not preserve those paths there.
+    command = [sys.executable, "-m", "uvicorn", "app.api:app", *sys.argv[1:]]
+    try:
+        return subprocess.run(command, cwd=ROOT).returncode
+    except KeyboardInterrupt:
+        return 130
 
 
 if __name__ == "__main__":

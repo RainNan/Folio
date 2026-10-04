@@ -5,13 +5,12 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 
 from app.config import get_llm
-from app.ingest import get_store
+from app.retrieval.runtime import get_retriever
 from app.prompts.PROMPTS import rag_prompt,title_prompt
 
 llm = get_llm()
 
-vector_store = get_store()
-retriever = vector_store.as_retriever()
+retriever = get_retriever()
 
 
 def convert_results_to_str(results: list[Document]) -> str:
@@ -36,7 +35,7 @@ answer_chain = rag_prompt | llm | StrOutputParser()
 
 
 def answer_question(inputs: dict) -> dict:
-    documents = retriever.invoke(inputs["question"])
+    documents = retriever.search(inputs["question"])
     answer = answer_chain.invoke({
         **inputs, "data": convert_results_to_str(documents),
     })
